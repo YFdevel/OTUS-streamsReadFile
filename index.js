@@ -2,38 +2,51 @@ const fs = require("fs");
 const path = require("path");
 
 const directoryName = process.argv[2];
-let str = "";
+let arr = [];
+const obj = {};
+let counter=0;
 
-const readFile = () => {
+const readFile = async() => {
     const readStream = fs.createReadStream(directoryName, "utf8");
-    readStream.on("data", (chunk) => {
-        str += chunk;
-    });
-    readStream.on("end", () => {
-        const arr = str.split(/\s/).filter(item => !(/ ,\.-\?!_-\u2013|\u2014/).test(item)).sort();
-        const obj = {};
-        for (let i = 0; i < arr.length; i++) {
-            arr[i] = arr[i].replace(/[\.,_]/g, '');
-            let currentElemCount = obj[arr[i]];
-            let count = currentElemCount ? currentElemCount : 0;
-            obj[arr[i]] = count + 1;
+    await readStream.on("data", (chunk) => {
+        const elem = chunk.split(/\s/).filter(item => !(/[\!\@\#\$\%\^\&\*\)\(\+\=\.\<\>\{\}\[\]\:\;\'\"\|\~\`\_\-\u2013|\u2014]+/).test(item)).sort();
+        for(let item of elem){
+            arr.push(item);
         }
-
-        console.log(obj);
-        const data = Object.values(obj);
-        console.log(data);
-        writeFile(data.join());
+    });
+    await readStream.on("end", async() => {
+         await handler();
+         const data = Object.values(obj);
+         await writeFile(data.join());
+         clearInterval(interval);
+          console.log(obj);
 
     });
-    readStream.on("error", (error) => {
+    await readStream.on("error", (error) => {
         console.log("Error: ", error);
     });
 };
 
-readFile();
-const writeFile = (data) => {
+
+const writeFile = async(data) => {
     const writeStream = fs.createWriteStream(path.join(__dirname, "writing-file.txt"), "utf8");
-    writeStream.write(data);
-    writeStream.end(() => console.log('File writing finished'));
+    await writeStream.write(data);
+    await writeStream.end(() => console.log(`File writing finished. It takes ${counter} seconds to read and write the file completely`));
 };
+
+function handler() {
+    for (let i = 0; i < arr.length; i++) {
+        arr[i] = arr[i].replace(/[\.\,_'()":;]/g, '');
+        let currentElemCount = obj[arr[i]];
+        let count = currentElemCount ? currentElemCount : 0;
+        obj[arr[i]] = count + 1;
+    }
+}
+
+readFile().catch();
+const interval=setInterval(()=>{
+    console.log(++counter);
+},1000);
+
+
 
